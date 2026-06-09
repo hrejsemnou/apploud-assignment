@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Users } from "lucide-react";
 import { UserCard } from "./UserCard";
 import type { UserData } from "@/types/audit";
 
@@ -72,7 +73,7 @@ export function UserList({ users, totalUsers, isLoading }: UserListProps) {
     return (
       <div className="text-center py-16">
         <div className="w-12 h-12 rounded-full bg-surface border border-border mx-auto flex items-center justify-center mb-4">
-          <span className="text-xl">∅</span>
+          <Users className="w-5 h-5 text-muted" />
         </div>
         <p className="text-sm text-muted">No members found in this group hierarchy.</p>
       </div>

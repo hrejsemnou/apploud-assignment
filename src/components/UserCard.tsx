@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Folder, FolderGit2 } from "lucide-react";
 import type { UserData } from "@/types/audit";
 
 type UserCardProps = UserData & { partial?: boolean };
@@ -35,7 +36,7 @@ function MembershipList({
 }: {
   items: { fullPath: string; accessLevel: string }[];
   label: string;
-  icon: string;
+  icon: React.ReactNode;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -47,7 +48,7 @@ function MembershipList({
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-2">
-        <span className="text-sm">{icon}</span>
+        {icon}
         <h4 className="text-xs font-display font-medium tracking-wider uppercase text-muted">
           {label}
         </h4>
@@ -112,8 +113,8 @@ export function UserCard({ name, username, groups, projects, partial }: UserCard
         </div>
       ) : (
         <div className="p-5 space-y-5">
-          <MembershipList items={groups} label="Groups" icon="📁" />
-          <MembershipList items={projects} label="Projects" icon="📄" />
+          <MembershipList items={groups} label="Groups" icon={<Folder className="w-3.5 h-3.5 text-muted" />} />
+          <MembershipList items={projects} label="Projects" icon={<FolderGit2 className="w-3.5 h-3.5 text-muted" />} />
           {partial ? (
             <p className="text-xs text-muted">+ more memberships pending</p>
           ) : null}
