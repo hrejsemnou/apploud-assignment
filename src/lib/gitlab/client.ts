@@ -1,21 +1,8 @@
 import type { RateLimitSnapshot } from "@/types/audit";
+import { GitLabApiError } from "./errors";
 
 const MAX_RETRIES = 3;
 const PER_PAGE = 100;
-
-class GitLabApiError extends Error {
-  public readonly retryAfter?: number;
-
-  constructor(
-    public readonly status: number,
-    message: string,
-    retryAfter?: number
-  ) {
-    super(message);
-    this.name = "GitLabApiError";
-    this.retryAfter = retryAfter;
-  }
-}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -105,5 +92,3 @@ export function createGitLabClient(baseUrl: string, token: string) {
 
   return { fetchOne, fetchAllPages };
 }
-
-export { GitLabApiError };

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { useStreamingAudit, setInterBatchDelay, computeDelay } from "../useStreamingAudit";
-import type { RateLimitSnapshot } from "@/types/audit";
+import { useStreamingAudit, computeDelay } from "../useStreamingAudit";
+import type { RateLimitSnapshot, UserData } from "@/types/audit";
 
 vi.mock("@/lib/gitlab/aggregate", () => ({
   aggregateUsers: vi.fn().mockReturnValue([]),
@@ -12,13 +12,11 @@ import { aggregateUsers } from "@/lib/gitlab/aggregate";
 describe("useStreamingAudit", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
-    setInterBatchDelay(0);
     vi.mocked(aggregateUsers).mockReturnValue([]);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    setInterBatchDelay(2000);
   });
 
   it("orchestrates discover → members → aggregate flow", async () => {
@@ -27,7 +25,7 @@ describe("useStreamingAudit", () => {
     const members = [{ id: 1, username: "alice", name: "Alice", accessLevel: 30 }];
     const aggregatedUsers = [{ id: 1, name: "Alice", username: "alice", groups: [{ fullPath: "g", accessLevel: "Developer" }], projects: [] }];
 
-    vi.mocked(aggregateUsers).mockReturnValue(aggregatedUsers as any);
+    vi.mocked(aggregateUsers).mockReturnValue(aggregatedUsers as UserData[]);
 
     vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : (input as Request).url;
@@ -43,7 +41,7 @@ describe("useStreamingAudit", () => {
     const { result } = renderHook(() => useStreamingAudit());
 
     await act(async () => {
-      result.current.trigger({ groupId: "1" });
+      result.current.trigger({ groupId: "1", initialDelay: 0 });
     });
 
     await waitFor(() => expect(result.current.data).toBeDefined());
@@ -65,7 +63,7 @@ describe("useStreamingAudit", () => {
     const { result } = renderHook(() => useStreamingAudit());
 
     await act(async () => {
-      result.current.trigger({ groupId: "1" });
+      result.current.trigger({ groupId: "1", initialDelay: 0 });
     });
 
     await waitFor(() => expect(result.current.error).toBeDefined());
@@ -93,7 +91,7 @@ describe("useStreamingAudit", () => {
     const { result } = renderHook(() => useStreamingAudit());
 
     await act(async () => {
-      result.current.trigger({ groupId: "1" });
+      result.current.trigger({ groupId: "1", initialDelay: 0 });
     });
 
     await waitFor(() => expect(result.current.data).toBeDefined());
@@ -110,7 +108,7 @@ describe("useStreamingAudit", () => {
     const { result } = renderHook(() => useStreamingAudit());
 
     await act(async () => {
-      result.current.trigger({ groupId: "1" });
+      result.current.trigger({ groupId: "1", initialDelay: 0 });
     });
 
     act(() => {
@@ -148,7 +146,7 @@ describe("useStreamingAudit", () => {
     const { result } = renderHook(() => useStreamingAudit());
 
     act(() => {
-      result.current.trigger({ groupId: "1" });
+      result.current.trigger({ groupId: "1", initialDelay: 0 });
     });
 
     await firstMembersCallPromise;
@@ -178,15 +176,15 @@ describe("useStreamingAudit", () => {
       return { ok: false, status: 404, json: () => Promise.resolve({ error: "not found" }) } as Response;
     });
 
-    vi.mocked(aggregateUsers).mockImplementation((gm: any) => {
-      const users = gm.flatMap((g: any) => g.members.map((m: any) => ({ id: m.id, name: m.name, username: m.username, groups: [], projects: [] })));
-      return users;
+    vi.mocked(aggregateUsers).mockImplementation((gm: { members: { id: number; name: string; username: string }[] }[]) => {
+      const users = gm.flatMap((g) => g.members.map((m) => ({ id: m.id, name: m.name, username: m.username, groups: [], projects: [] })));
+      return users as UserData[];
     });
 
     const { result } = renderHook(() => useStreamingAudit());
 
     await act(async () => {
-      result.current.trigger({ groupId: "1" });
+      result.current.trigger({ groupId: "1", initialDelay: 0 });
     });
 
     await waitFor(() => expect(result.current.data?.totalUsers).toBeGreaterThan(0));
@@ -197,15 +195,13 @@ describe("useStreamingAudit", () => {
     const resetAt = now + 5;
     const rateLimit: RateLimitSnapshot = { limit: 500, remaining: 10, resetAt };
 
-    setInterBatchDelay(2000);
-
-    const delay = computeDelay(rateLimit);
+    const delay = computeDelay(rateLimit, 2000);
     expect(delay).toBeGreaterThan(2000);
 
     const highRemaining: RateLimitSnapshot = { limit: 500, remaining: 50, resetAt };
-    expect(computeDelay(highRemaining)).toBe(2000);
+    expect(computeDelay(highRemaining, 2000)).toBe(2000);
 
-    expect(computeDelay(undefined)).toBe(2000);
+    expect(computeDelay(undefined, 2000)).toBe(2000);
   });
 
   it("shows rate-limited phase when remaining is low", async () => {
@@ -225,25 +221,21 @@ describe("useStreamingAudit", () => {
       return { ok: false, status: 404, json: () => Promise.resolve({ error: "not found" }) } as Response;
     });
 
-    // Capture what setTimeout delays are used
     const setTimeoutCalls: number[] = [];
     const origSetTimeout = globalThis.setTimeout;
-    vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: (...args: any[]) => any, ms?: number) => {
+    vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: (...args: unknown[]) => void, ms?: number) => {
       if (typeof ms === "number") {
         setTimeoutCalls.push(ms);
       }
       return origSetTimeout(fn, 0);
-    }) as any);
+    }) as unknown as typeof globalThis.setTimeout);
 
     const { result } = renderHook(() => useStreamingAudit());
 
     await act(async () => {
-      await result.current.trigger({ groupId: "1" });
+      await result.current.trigger({ groupId: "1", initialDelay: 0 });
     });
 
-    // Verify the hook computed a delay > interBatchDelayMs and used it
-    // setInterBatchDelay was set to 0 in beforeEach, so any delay > 0 from computeDelay
-    // proves the rate limit logic kicked in
     const nonZeroDelays = setTimeoutCalls.filter((ms) => ms > 0);
     expect(nonZeroDelays.length).toBeGreaterThan(0);
   });
@@ -264,20 +256,19 @@ describe("useStreamingAudit", () => {
 
     const setTimeoutCalls: number[] = [];
     const origSetTimeout = globalThis.setTimeout;
-    vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: (...args: any[]) => any, ms?: number) => {
+    vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: (...args: unknown[]) => void, ms?: number) => {
       if (typeof ms === "number") {
         setTimeoutCalls.push(ms);
       }
       return origSetTimeout(fn, 0);
-    }) as any);
+    }) as unknown as typeof globalThis.setTimeout);
 
     const { result } = renderHook(() => useStreamingAudit());
 
     await act(async () => {
-      await result.current.trigger({ groupId: "1" });
+      await result.current.trigger({ groupId: "1", initialDelay: 0 });
     });
 
-    // The hook should have called setTimeout with retryAfter * 1000 = 5000ms
     expect(setTimeoutCalls).toContain(5000);
 
     expect(result.current.error?.message).toBe("rate limited");

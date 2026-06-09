@@ -21,7 +21,7 @@ describe("fetchMembersBatch", () => {
         rateLimit: undefined,
       }),
     };
-    vi.mocked(createGitLabClient).mockReturnValue(mockClient as any);
+    vi.mocked(createGitLabClient).mockReturnValue(mockClient as unknown as ReturnType<typeof createGitLabClient>);
 
     const result = await fetchMembersBatch(
       [{ type: "group" as const, id: 42, fullPath: "my-group" }],
@@ -47,7 +47,7 @@ describe("fetchMembersBatch", () => {
         rateLimit: undefined,
       }),
     };
-    vi.mocked(createGitLabClient).mockReturnValue(mockClient as any);
+    vi.mocked(createGitLabClient).mockReturnValue(mockClient as unknown as ReturnType<typeof createGitLabClient>);
 
     const result = await fetchMembersBatch(
       [{ type: "project" as const, id: 99, fullPath: "my-group/my-project" }],
@@ -65,7 +65,7 @@ describe("fetchMembersBatch", () => {
         .mockResolvedValueOnce({ data: [{ id: 1, username: "alice", name: "Alice", access_level: 30 }], rateLimit: undefined })
         .mockResolvedValueOnce({ data: [{ id: 2, username: "bob", name: "Bob", access_level: 40 }], rateLimit: undefined }),
     };
-    vi.mocked(createGitLabClient).mockReturnValue(mockClient as any);
+    vi.mocked(createGitLabClient).mockReturnValue(mockClient as unknown as ReturnType<typeof createGitLabClient>);
 
     const result = await fetchMembersBatch(
       [
@@ -89,7 +89,7 @@ describe("fetchMembersBatch", () => {
         rateLimit: rateLimitSnapshot,
       }),
     };
-    vi.mocked(createGitLabClient).mockReturnValue(mockClient as any);
+    vi.mocked(createGitLabClient).mockReturnValue(mockClient as unknown as ReturnType<typeof createGitLabClient>);
 
     const result = await fetchMembersBatch(
       [{ type: "group" as const, id: 42, fullPath: "my-group" }],

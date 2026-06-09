@@ -3,26 +3,23 @@
 import { useState, useRef, useCallback } from "react";
 import type { AuditResult, AuditProgress, DiscoverResult, MembersBatchResult, RateLimitSnapshot } from "@/types/audit";
 import { aggregateUsers } from "@/lib/gitlab/aggregate";
+import { GitLabApiError } from "@/lib/gitlab/errors";
 
 interface AuditArgs {
   groupId: string;
   token?: string;
+  initialDelay?: number;
 }
 
 const BATCH_SIZE = 5;
-let interBatchDelayMs = 2000;
 const RATE_LIMIT_THRESHOLD = 30;
 
-export function setInterBatchDelay(ms: number) {
-  interBatchDelayMs = ms;
-}
-
-export function computeDelay(rateLimit?: RateLimitSnapshot): number {
+export function computeDelay(rateLimit: RateLimitSnapshot | undefined, baseDelay: number): number {
   if (!rateLimit || rateLimit.remaining >= RATE_LIMIT_THRESHOLD) {
-    return interBatchDelayMs;
+    return baseDelay;
   }
   const secondsUntilReset = Math.max(0, rateLimit.resetAt - Math.floor(Date.now() / 1000) + 1);
-  return Math.max(interBatchDelayMs, secondsUntilReset * 1000);
+  return Math.max(baseDelay, secondsUntilReset * 1000);
 }
 
 async function postJSON<T>(url: string, body: Record<string, unknown>): Promise<T> {
@@ -35,11 +32,11 @@ async function postJSON<T>(url: string, body: Record<string, unknown>): Promise<
   const data = await response.json();
 
   if (!response.ok) {
-    const err = new Error(data.error ?? "Unknown error");
-    if (data.retryAfter) {
-      (err as any).retryAfter = data.retryAfter;
-    }
-    throw err;
+    throw new GitLabApiError(
+      response.status,
+      data.error ?? "Unknown error",
+      data.retryAfter
+    );
   }
 
   return data as T;
@@ -53,6 +50,7 @@ export function useStreamingAudit() {
   const abortRef = useRef(false);
   const rateLimitRef = useRef<RateLimitSnapshot | undefined>(undefined);
   const progressRef = useRef<AuditProgress | null>(null);
+  const baseDelayRef = useRef(2000);
 
   const setProgressWithRef = useCallback((p: AuditProgress | null) => {
     progressRef.current = p;
@@ -67,13 +65,14 @@ export function useStreamingAudit() {
     abortRef.current = false;
     rateLimitRef.current = undefined;
     progressRef.current = null;
-  }, []);
+  }, [setProgressWithRef]);
 
   const abort = useCallback(() => {
     abortRef.current = true;
   }, []);
 
   const trigger = useCallback(async (args: AuditArgs) => {
+    baseDelayRef.current = args.initialDelay ?? 2000;
     abortRef.current = false;
     setData(undefined);
     setError(undefined);
@@ -146,8 +145,8 @@ export function useStreamingAudit() {
         setProgressWithRef({ current: completedCount, total, phase: "fetching-members", rateLimitRemaining: rateLimitRef.current?.remaining });
 
         if (i + BATCH_SIZE < total) {
-          const delay = computeDelay(rateLimitRef.current);
-          if (delay > interBatchDelayMs) {
+          const delay = computeDelay(rateLimitRef.current, baseDelayRef.current);
+          if (delay > baseDelayRef.current) {
             setProgressWithRef({ current: completedCount, total, phase: "rate-limited", rateLimitRemaining: rateLimitRef.current?.remaining });
           }
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -155,18 +154,17 @@ export function useStreamingAudit() {
       }
 
       setProgressWithRef(null);
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Unknown error");
-      if ((error as any).retryAfter) {
+    } catch (err: unknown) {
+      if (err instanceof GitLabApiError && err.retryAfter != null) {
         setProgressWithRef({ current: progressRef.current?.current ?? 0, total: progressRef.current?.total ?? 0, phase: "rate-limited", rateLimitRemaining: rateLimitRef.current?.remaining });
-        await new Promise((resolve) => setTimeout(resolve, (error as any).retryAfter * 1000));
+        await new Promise((resolve) => setTimeout(resolve, err.retryAfter! * 1000));
       }
-      setError(error);
+      setError(err instanceof Error ? err : new Error("Unknown error"));
       setProgressWithRef(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [setProgressWithRef]);
 
   return { trigger, abort, data, error, isLoading, progress, reset };
 }

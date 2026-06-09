@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchGroupHierarchy } from "@/lib/gitlab/groups";
 import { fetchProjectsInHierarchy } from "@/lib/gitlab/projects";
+import { handleApiError } from "@/lib/gitlab/errors";
 const GITLAB_BASE_URL = "https://gitlab.com/api/v4";
 
 export async function POST(request: NextRequest) {
@@ -31,11 +32,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ groups, projects, rateLimit: rl2 ?? rl1 });
   } catch (err: unknown) {
-    const status = err && typeof err === "object" && "status" in err
-      ? (err as { status: number }).status
-      : 502;
-    const message = err instanceof Error ? err.message : "Failed to reach GitLab API";
-
+    const { status, message } = handleApiError(err);
     return NextResponse.json({ error: message }, { status });
   }
 }

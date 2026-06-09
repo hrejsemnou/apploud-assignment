@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "../route";
 import { NextRequest } from "next/server";
+import type { MembersBatchResult } from "@/types/audit";
 
 vi.mock("@/lib/gitlab/members", () => ({
   fetchMembersBatch: vi.fn(),
@@ -28,7 +29,7 @@ describe("POST /api/audit/members", () => {
         { id: 42, fullPath: "my-group", members: [{ id: 1, username: "alice", name: "Alice", accessLevel: 30 }] },
       ],
     };
-    vi.mocked(fetchMembersBatch).mockResolvedValue(batchResult as any);
+    vi.mocked(fetchMembersBatch).mockResolvedValue(batchResult as MembersBatchResult);
 
     const response = await POST(createRequest({
       resources: [{ type: "group", id: 42, fullPath: "my-group" }],
@@ -40,7 +41,7 @@ describe("POST /api/audit/members", () => {
   });
 
   it("passes token from request body", async () => {
-    vi.mocked(fetchMembersBatch).mockResolvedValue({ results: [] } as any);
+    vi.mocked(fetchMembersBatch).mockResolvedValue({ results: [] } as MembersBatchResult);
 
     await POST(createRequest({
       resources: [{ type: "group", id: 1, fullPath: "g" }],
@@ -99,7 +100,7 @@ describe("POST /api/audit/members", () => {
 
   it("returns rate limit info when available", async () => {
     const rateLimit = { limit: 500, remaining: 480, resetAt: 1700000000 };
-    vi.mocked(fetchMembersBatch).mockResolvedValue({ results: [], rateLimit } as any);
+    vi.mocked(fetchMembersBatch).mockResolvedValue({ results: [], rateLimit } as MembersBatchResult);
 
     const response = await POST(createRequest({
       resources: [{ type: "group", id: 1, fullPath: "g" }],

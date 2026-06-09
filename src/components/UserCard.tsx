@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { UserData } from "@/types/audit";
 
-export type UserCardProps = UserData & { partial?: boolean };
+type UserCardProps = UserData & { partial?: boolean };
 
 const ACCESS_LEVEL_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   Owner: { bg: "bg-accent-soft", text: "text-accent", label: "Owner" },

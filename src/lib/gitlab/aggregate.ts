@@ -1,18 +1,10 @@
 import { accessLevelToString, ACCESS_LEVEL_RANK } from "./access-levels";
-import type { GitLabMember } from "./members";
-
-export interface UserAccess {
-  id: number;
-  name: string;
-  username: string;
-  groups: { fullPath: string; accessLevel: string }[];
-  projects: { fullPath: string; accessLevel: string }[];
-}
+import type { UserData } from "@/types/audit";
 
 interface MemberResult {
   id: number;
   fullPath: string;
-  members: GitLabMember[];
+  members: { id: number; username: string; name: string; accessLevel: number }[];
 }
 
 /**
@@ -39,10 +31,10 @@ function dedupeByFullPath(
 export function aggregateUsers(
   groupMembers: MemberResult[],
   projectMembers: MemberResult[]
-): UserAccess[] {
-  const userMap = new Map<number, UserAccess>();
+): UserData[] {
+  const userMap = new Map<number, UserData>();
 
-  function ensureUser(id: number, name: string, username: string): UserAccess {
+  function ensureUser(id: number, name: string, username: string): UserData {
     if (!userMap.has(id)) {
       userMap.set(id, { id, name, username, groups: [], projects: [] });
     }

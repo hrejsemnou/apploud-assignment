@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createGitLabClient } from "../client";
+import { GitLabApiError } from "../errors";
 
 describe("createGitLabClient", () => {
   const baseUrl = "https://gitlab.example.com/api/v4";
@@ -236,7 +237,6 @@ describe("createGitLabClient", () => {
         })
       );
 
-      const { GitLabApiError } = await import("../client");
       const client = createGitLabClient(baseUrl, token);
       const promise = client.fetchAllPages("/groups");
       let caught: unknown;
@@ -246,7 +246,7 @@ describe("createGitLabClient", () => {
       }
       await vi.runAllTimersAsync();
       expect(caught).toBeInstanceOf(GitLabApiError);
-      expect((caught as any).retryAfter).toBe(10);
+      expect((caught as GitLabApiError).retryAfter).toBe(10);
     });
   });
 

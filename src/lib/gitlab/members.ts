@@ -1,26 +1,10 @@
 import { createGitLabClient } from "./client";
-import type { RateLimitSnapshot } from "@/types/audit";
-
-export interface GitLabMember {
-  id: number;
-  username: string;
-  name: string;
-  accessLevel: number;
-}
+import type { RateLimitSnapshot, MembersBatchResult } from "@/types/audit";
 
 export interface MemberResource {
   type: "group" | "project";
   id: number;
   fullPath: string;
-}
-
-export interface MembersBatchResult {
-  results: Array<{
-    id: number;
-    fullPath: string;
-    members: GitLabMember[];
-  }>;
-  rateLimit?: RateLimitSnapshot;
 }
 
 export async function fetchMembersBatch(

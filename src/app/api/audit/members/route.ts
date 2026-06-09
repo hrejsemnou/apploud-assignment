@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchMembersBatch, MemberResource } from "@/lib/gitlab/members";
+import { handleApiError } from "@/lib/gitlab/errors";
 
 const GITLAB_BASE_URL = "https://gitlab.com/api/v4";
 const MAX_BATCH_SIZE = 5;
@@ -32,14 +33,7 @@ export async function POST(request: NextRequest) {
     const { results, rateLimit } = await fetchMembersBatch(resources, GITLAB_BASE_URL, gitlabToken);
     return NextResponse.json({ results, rateLimit });
   } catch (err: unknown) {
-    const status = err && typeof err === "object" && "status" in err
-      ? (err as { status: number }).status
-      : 502;
-    const message = err instanceof Error ? err.message : "Failed to reach GitLab API";
-    const retryAfter = err && typeof err === "object" && "retryAfter" in err
-      ? (err as { retryAfter: number }).retryAfter
-      : undefined;
-
+    const { status, message, retryAfter } = handleApiError(err);
     return NextResponse.json({ error: message, retryAfter }, { status });
   }
 }

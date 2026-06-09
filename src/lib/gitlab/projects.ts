@@ -1,7 +1,7 @@
 import { createGitLabClient } from "./client";
 import type { RateLimitSnapshot } from "@/types/audit";
 
-export interface GitLabProject {
+interface GitLabProject {
   id: number;
   fullPath: string;
   name: string;
