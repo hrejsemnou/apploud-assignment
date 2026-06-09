@@ -157,4 +157,70 @@ describe("aggregateUsers", () => {
       },
     ]);
   });
+
+  it("deduplicates same fullPath keeping highest access level", () => {
+    // Simulates GitLab returning both inherited (Guest) and direct (Developer)
+    // memberships for the same group/project path
+    const groupMembers = [
+      {
+        id: 1,
+        fullPath: "gitlab-org/prometheus/gcp-cloud-nat-exporter",
+        members: [
+          { id: 10, username: "user1", name: "User One", accessLevel: 10 },
+        ],
+      },
+      {
+        id: 1,
+        fullPath: "gitlab-org/prometheus/gcp-cloud-nat-exporter",
+        members: [
+          { id: 10, username: "user1", name: "User One", accessLevel: 30 },
+        ],
+      },
+    ];
+
+    const result = aggregateUsers(groupMembers, []);
+
+    expect(result).toEqual([
+      {
+        id: 10,
+        name: "User One",
+        username: "user1",
+        groups: [
+          { fullPath: "gitlab-org/prometheus/gcp-cloud-nat-exporter", accessLevel: "Developer" },
+        ],
+        projects: [],
+      },
+    ]);
+  });
+
+  it("deduplicates project paths keeping highest access level", () => {
+    const projectMembers = [
+      {
+        id: 1,
+        fullPath: "g/project",
+        members: [
+          { id: 10, username: "user1", name: "User One", accessLevel: 20 },
+        ],
+      },
+      {
+        id: 1,
+        fullPath: "g/project",
+        members: [
+          { id: 10, username: "user1", name: "User One", accessLevel: 50 },
+        ],
+      },
+    ];
+
+    const result = aggregateUsers([], projectMembers);
+
+    expect(result).toEqual([
+      {
+        id: 10,
+        name: "User One",
+        username: "user1",
+        groups: [],
+        projects: [{ fullPath: "g/project", accessLevel: "Owner" }],
+      },
+    ]);
+  });
 });

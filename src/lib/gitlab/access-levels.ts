@@ -9,6 +9,11 @@ const ACCESS_LEVELS: Record<number, string> = {
   50: "Owner",
 };
 
+/** Reverse lookup: label -> numeric rank (higher = more access) */
+export const ACCESS_LEVEL_RANK: Record<string, number> = Object.fromEntries(
+  Object.entries(ACCESS_LEVELS).map(([num, label]) => [label, Number(num)])
+);
+
 export function accessLevelToString(level: number): string {
   return ACCESS_LEVELS[level] ?? "Unknown";
 }
