@@ -40,6 +40,7 @@ export function AuditForm({ onSubmit, isLoading, onAbort }: AuditFormProps) {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
+              maxLength={10}
               required
               value={groupId}
               onChange={(e) => setGroupId(e.target.value)}
@@ -61,6 +62,7 @@ export function AuditForm({ onSubmit, isLoading, onAbort }: AuditFormProps) {
               <input
                 id="token"
                 type={showToken ? "text" : "password"}
+                maxLength={26}
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 disabled={isLoading}

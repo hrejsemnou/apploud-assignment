@@ -100,11 +100,12 @@ export function UserList({ users, totalUsers, isLoading }: UserListProps) {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search users..."
+            <input
+              type="text"
+              maxLength={128}
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Search users..."
             className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-display text-foreground placeholder:text-muted/50 w-full sm:w-48 transition-colors hover:border-border-strong focus:border-accent focus:ring-0"
           />
           <span className="font-display">Showing {start + 1}–{end}</span>
